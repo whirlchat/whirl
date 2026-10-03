@@ -1,6 +1,8 @@
 import { Composition } from "remotion";
 
 import { HelloWhirl } from "./HelloWhirl";
+import { OpenSource } from "./open-source/OpenSource";
+import { DURATION, FPS, SIZE } from "./open-source/timeline";
 import {
   TWO_X_LIMITS_DURATION,
   TWO_X_LIMITS_FPS,
@@ -25,6 +27,14 @@ export function RemotionRoot() {
         fps={TWO_X_LIMITS_FPS}
         width={1200}
         height={800}
+      />
+      <Composition
+        id="OpenSource"
+        component={OpenSource}
+        durationInFrames={DURATION}
+        fps={FPS}
+        width={SIZE}
+        height={SIZE}
       />
     </>
   );

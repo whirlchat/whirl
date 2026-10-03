@@ -1,0 +1,99 @@
+/* v2's design tokens, lifted from apps/v2/app/globals.css so the ripped
+   sidebar components can keep their real class names (bg-background,
+   text-foreground-soft, rounded-lg …) instead of being re-skinned by hand.
+
+   Two deliberate differences from v2:
+   - The dark variant is class-based here too, but nothing else in this
+     project uses `dark:`, so registering it is free.
+   - v2 flattens the whole radius scale to 0.75rem globally. Doing that here
+     would silently restyle the TwoXLimits composition, so the flattening is
+     scoped to `.v2-surface` — put it on any wrapper holding ripped v2
+     markup and `rounded-lg` & friends resolve exactly as they do in v2. */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The light token set is a CLASS as well as :root. v2 only ever needs
+   :root, because a page is light or dark as a whole — but a shot can stack
+   a light-mode window inside a dark-mode one, and :root matches only the
+   document root. Without the class the nested light subtree inherits the
+   ancestor's dark tokens and renders pale text on a pale canvas. */
+:root,
+.v2-light {
+  --surface: #ffffff;
+  --background: #f3f3f4;
+  --border: rgb(0 0 0 / 0.09);
+  /* The recess for components sunk INTO the surface (the composer). */
+  --well: #f4f4f5;
+  --well-outline: rgb(0 0 0 / 0.05);
+  /* The well's lit top edge. Load-bearing: it's used inside a box-shadow
+     list, and ONE undefined var() invalidates the whole declaration — so
+     leaving it out doesn't soften the highlight, it drops the outline with
+     it. */
+  --well-highlight: rgb(255 255 255 / 0.9);
+  --popover: #ffffff;
+  --foreground: #141414;
+  --foreground-soft: oklch(0.45 0 0);
+  --muted: oklch(0.91 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --primary: oklch(0.17 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+}
+
+.dark {
+  /* v2's dark climb: the panel is the floor and the rail steps up off it,
+     reading as a frame around a recessed page. */
+  --background: #202020;
+  --surface: #181818;
+  /* Dark wells go LIGHTER than the panel, not darker — the same tonal
+     elevation the popovers use; a darker pit read muddy. */
+  --well: #242424;
+  --well-outline: rgb(255 255 255 / 0.05);
+  --well-highlight: rgb(255 255 255 / 0.12);
+  /* Floating surfaces sit a step LIGHTER than the panel — dark-mode
+     elevation is tonal, an outline alone can't separate #1c1c1c from
+     #1c1c1c. */
+  --popover: #262626;
+  --foreground: #f0f0f0;
+  --foreground-soft: oklch(0.78 0 0);
+  --border: rgb(255 255 255 / 0.06);
+  --muted: #303030;
+  --muted-foreground: oklch(0.72 0 0);
+  --primary: oklch(0.9 0 0);
+  --primary-foreground: oklch(0.17 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-well: var(--well);
+  --color-popover: var(--popover);
+  --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-border: var(--border);
+}
+
+.v2-surface {
+  /* v2 sets this on <body> (`@layer base { body { @apply text-foreground } }`).
+     Without it, anything that doesn't name its own colour — the home
+     greeting, notably — inherits the browser default and renders black on
+     the dark surface. */
+  color: var(--foreground);
+
+  --radius-xs: 0.75rem;
+  --radius-sm: 0.75rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.75rem;
+}
+
+/* The dark-mode depth hairline `main` wears in v2 (globals.css `.raised`). */
+.dark .raised {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.04);
+}
