@@ -1,5 +1,8 @@
 import type { SidebarFolder, SidebarGroup } from "../v2-shared/ThreadList";
+import { staticFile } from "remotion";
+
 import type { DemoSuggestion } from "../v2-shared/HomeIntro";
+import type { SidebarUser } from "../v2-shared/UserButton";
 
 /* What the still life of the app is dressed in. The camera reads the
    sidebar top to bottom, so the list is long enough to fill the rail and
@@ -48,7 +51,13 @@ export const GROUPS: SidebarGroup[] = [
   },
 ];
 
-export const USER = { name: "Salt", plan: "Pro" };
+/* The pfp is a pug in a blanket (Unsplash, via picsum.photos id 1025). */
+export const USER: SidebarUser = {
+  name: "Salt",
+  plan: "Platinum",
+  imageSrc: staticFile("avatar.jpg"),
+  badgeSrc: staticFile("plan-badges/platinum.svg"),
+};
 
 export const GREETING = "What are we building today?";
 

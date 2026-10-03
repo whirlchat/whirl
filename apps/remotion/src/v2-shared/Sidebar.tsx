@@ -10,7 +10,7 @@ import {
   type SidebarFolder,
   type SidebarGroup,
 } from "./ThreadList";
-import { UserButton } from "./UserButton";
+import { UserButton, type SidebarUser } from "./UserButton";
 import { WhirlLogo } from "./WhirlLogo";
 
 /* Ripped from apps/v2/components/sidebar.tsx — the expanded desktop rail,
@@ -49,7 +49,7 @@ export function Sidebar({
   delays: SidebarDelays;
   /* The account row. Omitted for shots cropped above it — rendering it
      off-frame would only change where the flex-1 list stops. */
-  user?: { name: string; plan: string };
+  user?: SidebarUser;
 }) {
   const logo = useRise({ delay: delays.logo });
   const newButton = useRise({ delay: delays.newButton });
@@ -123,7 +123,7 @@ export function Sidebar({
 
       {user && (
         <SidebarSlot delay={delays.user ?? delays.groups}>
-          <UserButton name={user.name} plan={user.plan} />
+          <UserButton {...user} />
         </SidebarSlot>
       )}
     </aside>
