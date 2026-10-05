@@ -100,6 +100,7 @@ export const usageBreakdown = query({
       if (thread?.incognito) continue;
       heaviestReplies.push({
         messageId: reply._id,
+        threadId: reply.threadId,
         at: reply.createdAt,
         thread: threadLabel(thread),
         model: await modelLabel(ctx, reply.model, models),

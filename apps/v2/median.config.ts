@@ -1,10 +1,11 @@
 /* What the Median support agent may do on Whirl's behalf.
  *
  * Every lookup is keyed on the visitor the widget already proved, never on
- * something typed into the chat, and the answers come from Convex through
- * lib/median-backend.ts. The tools answer the questions people actually write
- * in with: why a reply failed, where their usage went, why an integration
- * stopped. Plans and prices live in the knowledge base instead, so there is
+ * something typed into the chat. The one thing a customer does type is a
+ * thread link, and that only narrows within their own threads. The answers
+ * come from Convex through lib/median-backend.ts. The tools answer the
+ * questions people actually write in with: why a reply failed, where their
+ * usage went, why an integration stopped, what happened to one reply. Plans and prices live in the knowledge base instead, so there is
  * one copy of them to keep true.
  *
  * One tool writes: whirlRefundReply gives back the allowance a single reply
@@ -149,15 +150,42 @@ export default defineConfig({
       },
     },
 
+    whirlThreadReplies: {
+      description:
+        "The replies in one of the customer's threads, newest 20, oldest first: when each was written, the start of what was asked and of the reply, the model, whether it failed or was cut short, whether it was billed, and whether it was already refunded. Each one carries the messageId whirlRefundReply needs. Customers can't see message ids, so when they want a specific reply looked at or refunded, ask them to open that thread and copy the link from the address bar (it ends in /thread/ and an id), then pass what they paste here as-is. Match the reply they describe against askedAbout and replyStart, and confirm with them if more than one fits.",
+      risk: "low",
+      input: {
+        threadId: p.string(
+          "The thread link or id the customer pasted from their address bar. A full URL, a /thread/… path, or the bare id all work.",
+        ),
+      },
+      async execute({ threadId }, context) {
+        const customer = verifiedCustomer(context);
+        if (!customer) return SIGNED_OUT;
+
+        const { convex, secret } = supportBackend();
+        return await convex.query(api.support.threads.threadReplies, {
+          secret,
+          externalId: customer,
+          threadRef: threadId,
+        });
+      },
+    },
+
     whirlRefundReply: {
       description:
-        "Gives back the allowance one reply used: its free message, its share of the plan's usage, or the extra-usage dollars it spent. It never refunds a subscription or a card payment. Use it when a reply was clearly broken, cut short, or wrong through no fault of the customer's. Take the messageId from whirlReplyProblems or whirlUsageBreakdown. A teammate approves every call first, so don't promise the refund. Say you've asked the team to credit it back.",
+        "Gives back the allowance one reply used: its free message, its share of the plan's usage, or the extra-usage dollars it spent. It never refunds a subscription or a card payment. Use it when a reply was clearly broken, cut short, or wrong through no fault of the customer's. Never ask the customer for a message id; they can't see one. Ask for the thread link from their address bar, find the reply with whirlThreadReplies, and pass that thread and the reply's messageId. A reply from whirlReplyProblems or whirlUsageBreakdown already carries both. A teammate approves every call first, so don't promise the refund. Say you've asked the team to credit it back.",
       risk: "high",
       input: {
-        messageId: p.string("The reply's messageId, exactly as another tool returned it."),
+        threadId: p.string(
+          "The thread the reply is in: the link or id the customer pasted, or the threadId another tool returned.",
+        ),
+        messageId: p.string(
+          "The reply's messageId, exactly as whirlThreadReplies (or another tool) returned it. Never ask the customer for this.",
+        ),
         reason: p.string("One sentence on what went wrong with the reply, for the teammate approving it."),
       },
-      async execute({ messageId, reason }, context) {
+      async execute({ threadId, messageId, reason }, context) {
         const customer = verifiedCustomer(context);
         if (!customer) return SIGNED_OUT;
 
@@ -165,6 +193,7 @@ export default defineConfig({
         return await convex.action(api.support.refunds.refundReply, {
           secret,
           externalId: customer,
+          threadRef: threadId,
           messageId,
           reason,
           approvedBy: context.approvedBy ?? "unknown",

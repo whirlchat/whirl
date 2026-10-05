@@ -18,6 +18,7 @@ const MAX_PROBLEMS = 10;
 
 export type ReplyProblem = {
   messageId: Id<"messages">;
+  threadId: Id<"threads">;
   at: number;
   thread: string;
   model: string;
@@ -71,6 +72,7 @@ export const recentProblems = query({
 
       problems.push({
         messageId: reply._id,
+        threadId: reply.threadId,
         at: reply.createdAt,
         thread: threadLabel(thread),
         model: await modelLabel(ctx, reply.model, models),

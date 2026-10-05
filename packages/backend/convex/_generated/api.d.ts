@@ -135,6 +135,8 @@ import type * as support_integrations from "../support/integrations.js";
 import type * as support_labels from "../support/labels.js";
 import type * as support_refunds from "../support/refunds.js";
 import type * as support_replies from "../support/replies.js";
+import type * as support_threadRef from "../support/threadRef.js";
+import type * as support_threads from "../support/threads.js";
 import type * as support_usage from "../support/usage.js";
 import type * as threadCompaction from "../threadCompaction.js";
 import type * as threads from "../threads.js";
@@ -280,6 +282,8 @@ declare const fullApi: ApiFromModules<{
   "support/labels": typeof support_labels;
   "support/refunds": typeof support_refunds;
   "support/replies": typeof support_replies;
+  "support/threadRef": typeof support_threadRef;
+  "support/threads": typeof support_threads;
   "support/usage": typeof support_usage;
   threadCompaction: typeof threadCompaction;
   threads: typeof threads;

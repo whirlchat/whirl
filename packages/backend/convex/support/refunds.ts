@@ -6,6 +6,10 @@
 // buckets they came out of, which is why it works from `usageCharges` and not
 // from the message's `usageCost` (that one is the raw provider figure, before
 // any multiplier). Receipts are kept 30 days, so that's the refund window.
+//
+// The customer names the thread (its id is in their address bar) and the
+// agent picks the reply out of support/threads.ts, so the reply has to be in
+// that thread. A messageId lifted from somewhere else gets refused.
 
 import { Autumn } from "autumn-js";
 import { v } from "convex/values";
@@ -20,11 +24,13 @@ import {
 } from "../inference/billing";
 import { FREE_MESSAGES_FEATURE_ID } from "../usageLedger";
 import { assertSupportSecret } from "./guard";
+import { resolveThreadRef } from "./threadRef";
 
 /* A turn opens a handful of charges at most (the reply, a search or two). */
 const MAX_CHARGES = 20;
 
 type Claim =
+  | { status: "thread_not_found" }
   | { status: "not_found" }
   | { status: "nothing_charged" }
   | { status: "still_settling" }
@@ -45,14 +51,23 @@ type Claim =
 export const claimRefund = internalMutation({
   args: {
     externalId: v.string(),
+    threadRef: v.string(),
     messageId: v.string(),
     approvedBy: v.string(),
     reason: v.string(),
   },
   handler: async (ctx, args): Promise<Claim> => {
+    const thread = await resolveThreadRef(ctx, args.threadRef, args.externalId);
+    if (!thread) return { status: "thread_not_found" };
+
     const messageId = ctx.db.normalizeId("messages", args.messageId);
     const message = messageId ? await ctx.db.get(messageId) : null;
-    if (!message || message.userId !== args.externalId || message.role !== "assistant") {
+    if (
+      !message ||
+      message.threadId !== thread._id ||
+      message.userId !== args.externalId ||
+      message.role !== "assistant"
+    ) {
       return { status: "not_found" };
     }
 
@@ -122,7 +137,10 @@ export type RefundResult =
     };
 
 const REFUSALS: Record<Exclude<Claim["status"], "claimed">, (claim: Claim) => string> = {
-  not_found: () => "That reply doesn't exist or isn't this customer's.",
+  thread_not_found: () =>
+    "No thread of this customer's matches that. Ask them to copy the link from the address bar while the thread is open.",
+  not_found: () =>
+    "That reply isn't in this thread. Look the thread up again with whirlThreadReplies and use a messageId from there.",
   nothing_charged: () =>
     "Nothing was charged for that reply (failed and blocked replies aren't billed), or its receipt is older than 30 days.",
   still_settling: () =>
@@ -137,6 +155,7 @@ export const refundReply = action({
   args: {
     secret: v.string(),
     externalId: v.string(),
+    threadRef: v.string(),
     messageId: v.string(),
     approvedBy: v.string(),
     reason: v.string(),
@@ -151,6 +170,7 @@ export const refundReply = action({
 
     const claim: Claim = await ctx.runMutation(internal.support.refunds.claimRefund, {
       externalId: args.externalId,
+      threadRef: args.threadRef,
       messageId: args.messageId,
       approvedBy: args.approvedBy,
       reason: args.reason,
