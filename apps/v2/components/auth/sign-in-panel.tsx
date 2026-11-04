@@ -18,9 +18,20 @@ import {
   SubtleAction,
   SwitchHint,
 } from "./bits";
+import {
+  beginClientTrust,
+  sendClientTrustCode,
+  verifyClientTrustCode,
+  type ClientTrustFactor,
+} from "./client-trust";
 import { CodeField, IconField, PasswordField } from "./fields";
 
-type Step = "start" | "verify-2fa" | "forgot-email" | "forgot-reset";
+type Step =
+  | "start"
+  | "verify-2fa"
+  | "verify-client-trust"
+  | "forgot-email"
+  | "forgot-reset";
 type SecondFactor = "totp" | "phone_code" | "backup_code";
 
 export function SignInPanel({
@@ -37,6 +48,9 @@ export function SignInPanel({
   const [password, setPassword] = useState("");
   const [factor, setFactor] = useState<SecondFactor>("totp");
   const [code, setCode] = useState("");
+  const [trustFactor, setTrustFactor] =
+    useState<ClientTrustFactor>("email_code");
+  const [trustCode, setTrustCode] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
@@ -86,10 +100,53 @@ export function SignInPanel({
         setFactor("backup_code");
       }
       setStep("verify-2fa");
+    } else if (signIn.status === "needs_client_trust") {
+      /* Device Trust: Clerk has not seen this browser before, so the
+         password alone is not enough — it wants a code it sends us.
+         Send it and ask for it instead of dead-ending here. */
+      const { factor, error } = await beginClientTrust(signIn);
+      if (error) {
+        setError(describeError(error));
+      } else if (factor) {
+        setTrustFactor(factor);
+        setTrustCode("");
+        setStep("verify-client-trust");
+      } else {
+        setError("Couldn't finish signing in. Try again.");
+      }
     } else {
       setError("Couldn't finish signing in. Try again.");
     }
     setBusy(false);
+  };
+
+  const handleClientTrust = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signIn || busy) return;
+    setError(null);
+    setBusy(true);
+
+    const { error } = await verifyClientTrustCode(
+      signIn,
+      trustFactor,
+      trustCode,
+    );
+
+    if (error) {
+      setError(describeError(error));
+    } else if (signIn.status === "complete") {
+      await finalize();
+    } else {
+      setError("Couldn't verify the code. Try again.");
+    }
+    setBusy(false);
+  };
+
+  const handleClientTrustResend = async () => {
+    if (!signIn || busy) return;
+    setError(null);
+    const { error } = await sendClientTrustCode(signIn, trustFactor);
+    if (error) setError(describeError(error));
   };
 
   const handleSecondFactor = async (e: React.FormEvent) => {
@@ -262,6 +319,37 @@ export function SignInPanel({
                 Use a backup code instead
               </SubtleAction>
             )}
+            <ErrorNote message={error} />
+            <SubmitButton busy={busy}>Verify</SubmitButton>
+          </form>
+        </motion.div>
+      )}
+
+      {step === "verify-client-trust" && (
+        <motion.div key="verify-client-trust" {...stepMotion}>
+          <BackButton onClick={() => goTo("start")} />
+          <StepTitle
+            title="Verify it's you"
+            subtitle={
+              trustFactor === "email_code"
+                ? `This device is new to us, so Clerk sent a 6-digit code to ${email}. Enter it to finish signing in.`
+                : "This device is new to us, so Clerk sent a 6-digit code to your phone. Enter it to finish signing in."
+            }
+          />
+          <form onSubmit={handleClientTrust} className="flex flex-col gap-2.5">
+            <CodeField
+              value={trustCode}
+              onChange={setTrustCode}
+              placeholder="123456"
+              autoFocus
+              required
+            />
+            <SubtleAction
+              onClick={handleClientTrustResend}
+              className="-mt-0.5 self-start"
+            >
+              Resend code
+            </SubtleAction>
             <ErrorNote message={error} />
             <SubmitButton busy={busy}>Verify</SubmitButton>
           </form>
